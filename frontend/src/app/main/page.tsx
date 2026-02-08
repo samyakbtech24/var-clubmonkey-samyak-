@@ -70,8 +70,9 @@ export default function Dashboard() {
       {/* REDDIT SEARCH BAR HEADER */}
       <header className="sticky top-0 z-50 h-12 bg-[#1A1A1B] border-b border-[#343536] px-4 flex items-center gap-4">
         <div className="text-red-500 font-bold text-xl">ClubMonkey</div>
-        <div className="flex-1 max-w-2xl mx-auto">
-          <div className="relative">
+
+        <div className="flex-1 max-w-2xl mx-auto flex items-center gap-4">
+          <div className="relative flex-1">
             <input
               type="text"
               placeholder="Search ClubMonkey"
@@ -89,8 +90,31 @@ export default function Dashboard() {
               />
             </svg>
           </div>
+
+          {/* COLLAB BUTTON */}
+          <Link href="/collab">
+            <button className="hidden md:block text-xs font-bold border border-[#343536] px-4 py-1.5 rounded-full hover:bg-[#272729] transition-colors whitespace-nowrap">
+              Collab on Projects
+            </button>
+          </Link>
         </div>
-        <div className="w-8 h-8 rounded bg-zinc-700"></div>
+
+        {/* PROFILE CIRCULAR BUTTON */}
+        <Link href="/profile">
+          <button className="w-8 h-8 rounded-full bg-zinc-700 border border-[#343536] flex items-center justify-center hover:border-zinc-500 transition-colors overflow-hidden">
+            <svg
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="w-5 h-5 text-zinc-400"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        </Link>
       </header>
 
       {/* THREE COLUMN LAYOUT */}
@@ -102,7 +126,6 @@ export default function Dashboard() {
           </h2>
           <div className="bg-[#1A1A1B] rounded border border-[#343536] overflow-hidden">
             {allClubs.map((club) => (
-              /* Wrapped in Link */
               <Link key={club.id} href={`/clubs/${club.id}`}>
                 <div className="flex items-center gap-3 p-3 hover:bg-[#272729] cursor-pointer border-b border-[#343536] last:border-0">
                   <div
@@ -158,7 +181,6 @@ export default function Dashboard() {
             <div className="space-y-4">
               {recommendedClubs.length > 0 ? (
                 recommendedClubs.map((club) => (
-                  /* Wrapped in Link */
                   <Link
                     key={club.id}
                     href={`/clubs/${club.id}`}

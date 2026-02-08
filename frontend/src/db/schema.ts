@@ -70,6 +70,8 @@ export const projects = pgTable("projects", {
   // Requirements for matching: ["React", "Python"]
   requirements: jsonb("requirements").$type<string[]>().default([]),
   status: text("status").default("open"),
+  startDate: timestamp("start_date"),
+  contactInfo: text("contact_info").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

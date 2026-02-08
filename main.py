@@ -8,18 +8,18 @@ from datetime import datetime
 from pydantic import BaseModel
 from typing import List, Optional
  
-# --- DATABASE SETUP ---
+ 
 DATABASE_URL = "postgresql+psycopg2://neondb_owner:npg_YrsM3yKIRxH0@ep-orange-cell-ah07255h-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 engine = create_engine(
     DATABASE_URL,
-    # ADD THESE TWO LINES:
-    pool_pre_ping=True,      # Tests the connection before every query
-    pool_recycle=300         # Refreshes the connection every 5 minutes
+    
+    pool_pre_ping=True,       
+    pool_recycle=300          
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
  
-# --- MODELS ---
+ 
 
 class User(Base):
     __tablename__ = "users"
@@ -71,7 +71,7 @@ class ProjectCollaborator(Base):
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
 
-# --- APP SETUP ---
+ 
 
 app = FastAPI(title="ClubMonkey API")
 
@@ -90,23 +90,23 @@ def get_db():
     finally:
         db.close()
 
-# This is what you send to the frontend
+ 
 class UserSchema(BaseModel):
     id: str
     name: str
     email: str
     image: Optional[str] = None
     preferences: List[str] = []
-    # Change from datetime.datetime to just datetime
+     
     created_at: datetime 
     class Config: from_attributes = True
 
-# This is what you receive from the frontend during Sign Up
+ 
 class UserCreate(BaseModel):
     id: str
     name: str
     email: str
-    password: str # Required for sign up
+    password: str  
 
 class ClubSchema(BaseModel):
     id: int
@@ -151,12 +151,12 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
     
-    # SAVE AS PLAIN TEXT
+     
     new_user = User(
         id=user_data.id,
         name=user_data.name,
         email=user_data.email,
-        password=user_data.password, # Just the raw string
+        password=user_data.password,  
         image=None,
         preferences=[]
     )
@@ -166,16 +166,18 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
-# Schema for Login request
+
 class UserLogin(BaseModel):
     email: str
     password: str
+
+
 
 @app.post("/login", response_model=UserSchema)
 def login(login_data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data.email).first()
     
-    # DIRECT STRING COMPARISON
+     
     if not user or user.password != login_data.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -198,10 +200,10 @@ def update_preferences(data: PreferencesUpdate, db: Session = Depends(get_db)):
 
 @app.get("/clubs/recommended/{user_id}", response_model=List[ClubSchema])
 def get_recommended_clubs(user_id: str, db: Session = Depends(get_db)):
-    # Fetch the user's preferences
+     
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.preferences:
-        # If no preferences, return all clubs as fallback
+         
         return db.query(Club).all()
     
     user_prefs = set(user.preferences)
@@ -209,7 +211,7 @@ def get_recommended_clubs(user_id: str, db: Session = Depends(get_db)):
     
     recommended = []
     for club in all_clubs:
-        # Check if there is any intersection between user preferences and club tags
+         
         club_tags = set(club.tags) if club.tags else set()
         if user_prefs.intersection(club_tags):
             recommended.append(club)
@@ -218,15 +220,168 @@ def get_recommended_clubs(user_id: str, db: Session = Depends(get_db)):
 
 @app.get("/clubs/{club_id}")
 def get_club_details(club_id: int, db: Session = Depends(get_db)):
-    # 1. Fetch Club Info
+     
     club = db.query(Club).filter(Club.id == club_id).first()
     if not club:
         raise HTTPException(status_code=404, detail="Club not found")
     
-    # 2. Fetch all posts for this club
+     
     club_posts = db.query(Post).filter(Post.club_id == club_id).order_by(Post.created_at.desc()).all()
     
     return {
         "club": club,
         "posts": club_posts
     }
+
+class ProjectCreate(BaseModel):
+    author_id: str
+    title: str
+    description: str
+    requirements: List[str]
+
+class ProjectSchema(BaseModel):
+    id: int
+    author_id: str
+    title: str
+    description: str
+    requirements: List[str]
+    status: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+@app.get("/allprojects", response_model=List[ProjectSchema]) 
+def get_all_projects(db: Session = Depends(get_db)):
+     
+    all_projects = db.query(Project).all()
+    return all_projects
+
+@app.get("/projects/{project_id}")
+def get_project_details(project_id: int, db: Session = Depends(get_db)):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    author = db.query(User).filter(User.id == project.author_id).first()
+    
+     
+    return {
+        "project": {
+            "id": project.id,
+            "author_id": project.author_id,
+            "title": project.title,
+            "description": project.description,
+            "requirements": project.requirements,
+            "status": project.status,
+            "created_at": project.created_at
+        },
+        "author_name": author.name if author else "Unknown"
+    }
+
+@app.post("/projects", response_model=None)  
+def upload_project(project_data: ProjectCreate, db: Session = Depends(get_db)):
+     
+    new_project = Project(
+        author_id=project_data.author_id,
+        title=project_data.title,
+        description=project_data.description,
+        requirements=project_data.requirements,
+        status="open"  
+    )
+    
+    try:
+        db.add(new_project)
+        db.commit()
+        db.refresh(new_project)
+        return new_project
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    
+ 
+
+@app.post("/projects/join")
+def join_project(user_id: str, project_id: int, db: Session = Depends(get_db)):
+     
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    
+    existing_collab = db.query(ProjectCollaborator).filter(
+        ProjectCollaborator.user_id == user_id,
+        ProjectCollaborator.project_id == project_id
+    ).first()
+    
+    if existing_collab:
+        raise HTTPException(status_code=400, detail="You are already collaborating on this project")
+
+     
+    new_collaboration = ProjectCollaborator(
+        user_id=user_id,
+        project_id=project_id
+    )
+
+    try:
+        db.add(new_collaboration)
+        db.commit()
+        return {"message": "Successfully joined the project team", "project_id": project_id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+class ProfileResponse(BaseModel):
+    user: UserSchema
+    clubs: List[ClubSchema]
+    recommended_clubs: List[ClubSchema]
+    posted_projects: List[ProjectSchema]
+    collaborating_projects: List[ProjectSchema]
+
+    class Config:
+        from_attributes = True
+
+@app.get("/profile/{user_id}", response_model=ProfileResponse)
+def get_user_profile(user_id: str, db: Session = Depends(get_db)):
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+     
+    joined_club_ids = db.query(ClubMember.club_id).filter(ClubMember.user_id == user_id).all()
+    
+    joined_club_ids = [r[0] for r in joined_club_ids]
+    my_clubs = db.query(Club).filter(Club.id.in_(joined_club_ids)).all() if joined_club_ids else []
+
+    
+    my_projects = db.query(Project).filter(Project.author_id == user_id).all()
+
+     
+    collab_project_ids = db.query(ProjectCollaborator.project_id).filter(ProjectCollaborator.user_id == user_id).all()
+    collab_project_ids = [r[0] for r in collab_project_ids]
+    collab_projects = db.query(Project).filter(Project.id.in_(collab_project_ids)).all() if collab_project_ids else []
+
+    
+    user_prefs = set(user.preferences) if user.preferences else set()
+    all_clubs = db.query(Club).all()
+    recommended = []
+    
+    for club in all_clubs:
+        if club.id in joined_club_ids:
+            continue
+        club_tags = set(club.tags) if club.tags else set()
+        if user_prefs.intersection(club_tags):
+            recommended.append(club)
+
+     
+    return {
+        "user": user,
+        "clubs": my_clubs,
+        "recommended_clubs": recommended,
+        "posted_projects": my_projects,
+        "collaborating_projects": collab_projects
+    }
+    
