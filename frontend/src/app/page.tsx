@@ -1,20 +1,23 @@
 import React from "react";
 import Link from "next/link";
+import { RetroGrid } from "@/components/ui/retrobg"
+import SignIn from '@/components/ui/SignIn'
+
 const page = () => {
   return (
-    <div className="min-h-screen bg-[#121212] flex flex-col justify-center items-center gap-4">
-      <div className="text-center mb-8">
-        <h1 className="text-5xl font-bold text-white mb-2">ClubMonkey</h1>
-        <p className="text-zinc-400">Connect. Collaborate. Create.</p>
+    <div className=" flex flex-col justify-center relative items-center">
+      {/* Background Layer: Absolute positioning puts it behind everything */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <RetroGrid />
       </div>
-      <Link href="/auth/login" className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-all">
-        Sign In
-      </Link>
-      <Link href="/auth/signup" className="px-8 py-3 border-2 border-zinc-700 text-zinc-300 font-bold rounded-lg hover:bg-zinc-800 transition-all">
-        Create Account
-      </Link>
+
+      {/* Content Layer: Relative positioning + z-index puts it on top */}
+      <div className="relative z-10 w-full h-full">
+        <SignIn />
+      </div>
     </div>
   );
 };
 
 export default page;
+
